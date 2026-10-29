@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GENERATOR LKB - Laporan Kinerja Bulanan</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Alpine.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+  
+  <!-- SheetJS (xlsx) CDN for Excel Export -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            excelYellow: '#FFFF00',
+            primaryDark: '#0f172a'
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Styling for Excel Table in Document Preview */
+    .excel-table {
+      border-collapse: collapse;
+      width: 100%;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+    .excel-table th, .excel-table td {
+      border: 1px solid #000000 !important;
+    }
+    .excel-header-bg {
+      background-color: #FFFF00 !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    /* Interactive Split Screen & A4 Paper Styling */
+    .paper-sheet {
+      width: 210mm;
+      min-height: 297mm;
+      padding: 20mm 20mm 20mm 30mm; /* Top 2cm, Right 2cm, Bottom 2cm, Left 3cm */
+      background: #ffffff;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+      margin: 0 auto;
+      box-sizing: border-box;
+      color: #000000;
+    }
+
+    /* Print Configuration (A4 Portrait, Custom Margins) */
+    @page {
+      size: A4 portrait;
+      margin: 20mm 20mm 20mm 30mm; /* Margin: Left 3cm, Top/Right/Bottom 2cm */
+    }
+
+    @media print {
+      html, body {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .paper-sheet {
+        width: 100% !important;
+        min-height: auto !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: none !important;
+      }
+      .excel-table th {
+        background-color: #FFFF00 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .excel-table tr {
+        page-break-inside: avoid;
+      }
+    }
+
+    [x-cloak] { display: none !important; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen antialiased" x-data="lkbApp">
+
+  <!-- TOP HEADER & BAR (No-Print) -->
+  <header class="no-print bg-slate-900 text-white sticky top-0 z-40 border-b border-slate-800 shadow-md">
+    <div class="max-w-[1600px] mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      
+      <!-- Brand & Title -->
+      <div class="flex items-center space-x-3">
+        <div class="bg-amber-400 text-slate-950 p-2 rounded-lg font-black text-xl tracking-wider">
+          LKB
+        </div>
+        <div>
+          <h1 class="text-base font-bold leading-tight">GENERATOR LKB</h1>
+          <p class="text-xs text-slate-400">Laporan Kinerja Bulanan Tenaga Pendidik & Pegawai</p>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex flex-wrap items-center gap-2">
+        <!-- Export to Excel Button -->
+        <button @click="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs md:text-sm font-semibold px-3.5 py-2 rounded-lg flex items-center space-x-2 transition shadow">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+          <span>Export Excel</span>
+        </button>
+
+        <!-- Print / PDF Button -->
+        <button @click="printDocument()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs md:text-sm font-semibold px-3.5 py-2 rounded-lg flex items-center space-x-2 transition shadow">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 00-2 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+          </svg>
+          <span>Cetak / Simpan PDF</span>
+        </button>
+
+        <!-- Clear All Data -->
+        <button @click="clearAllData()" class="bg-red-700 hover:bg-red-600 text-white text-xs px-3 py-2 rounded-lg transition" title="Kosongkan Semua Data">
+          Kosongkan Form
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- SPLIT SCREEN LAYOUT CONTAINER -->
+  <div class="max-w-[1600px] mx-auto p-3 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- LEFT PANEL: FORM & CONTROLS (~40% Width) -->
+    <div class="no-print lg:col-span-5 space-y-4">
+
+      <!-- NAVIGATION TABS -->
+      <div class="bg-white rounded-xl p-1.5 shadow-sm border border-slate-200 flex space-x-1">
+        <button @click="activeTab = 'input'" :class="activeTab === 'input' ? 'bg-slate-900 text-white shadow' : 'text-slate-600 hover:bg-slate-100'" class="flex-1 py-2 text-xs font-medium rounded-lg transition text-center">
+          📝 Input Kegiatan
+        </button>
+        <button @click="activeTab = 'preset'" :class="activeTab === 'preset' ? 'bg-slate-900 text-white shadow' : 'text-slate-600 hover:bg-slate-100'" class="flex-1 py-2 text-xs font-medium rounded-lg transition text-center">
+          ⚡ Kelola Preset
+        </button>
+        <button @click="activeTab = 'profil'" :class="activeTab === 'profil' ? 'bg-slate-900 text-white shadow' : 'text-slate-600 hover:bg-slate-100'" class="flex-1 py-2 text-xs font-medium rounded-lg transition text-center">
+          👤 Data Profil
+        </button>
+      </div>
+
+      <!-- TAB 1: PERIODE & INPUT KEGIATAN -->
+      <div x-show="activeTab === 'input'" class="space-y-4">
+        
+        <!-- Periode Laporan Selector -->
+        <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200 space-y-3">
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">📅 Periode Laporan</label>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[11px] text-slate-500 mb-1">Bulan</label>
+              <select x-model="selectedMonth" @change="onPeriodChange()" class="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-amber-500 focus:outline-none bg-slate-50 font-semibold">
+                <template x-for="(m, idx) in months" :key="idx">
+                  <option :value="idx" x-text="m" :selected="idx == selectedMonth"></option>
+                </template>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] text-slate-500 mb-1">Tahun</label>
+              <input type="number" x-model="selectedYear" @change="onPeriodChange()" class="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-amber-500 focus:outline-none bg-slate-50 font-semibold">
+            </div>
+          </div>
+        </div>
+
+        <!-- Tombol Cepat (Presets) -->
+        <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-amber-600 flex items-center space-x-1">
+              <span>⚡</span>
+              <span>Tombol Cepat (Preset Tugas)</span>
+            </span>
+            <button @click="activeTab = 'preset'" class="text-[11px] text-amber-600 hover:underline font-semibold">+ Kelola Preset</button>
+          </div>
+
+          <div class="flex flex-wrap gap-1.5">
+            <template x-for="p in presets" :key="p.id || p.label">
+              <button @click="applyPreset(p)" type="button" class="bg-slate-100 hover:bg-amber-100 hover:text-amber-900 text-slate-700 text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 transition font-medium text-left flex items-center space-x-1">
+                <span>+</span>
+                <span x-text="p.label"></span>
+              </button>
+            </template>
+
+            <template x-if="presets.length === 0">
+              <span class="text-xs text-slate-400 italic">Belum ada preset. Klik "Kelola Preset" untuk menambahkan.</span>
+            </template>
+          </div>
+        </div>
+
+        <!-- Manual Activity Input Form -->
+        <div class="bg-white rounded-xl p-4 md:p-5 shadow-sm border border-slate-200 space-y-4">
+          <div class="flex items-center justify-between border-b pb-2.5">
+            <h2 class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center space-x-2">
+              <span class="text-amber-500">✍️</span>
+              <span x-text="form.id ? 'Edit Kegiatan' : 'Tambah Kegiatan Harian'"></span>
+            </h2>
+            <template x-if="form.id">
+              <button @click="resetForm()" class="text-xs text-red-600 hover:underline font-semibold">Batal Edit</button>
+            </template>
+          </div>
+
+          <form @submit.prevent="saveActivity()" class="space-y-3">
+            
+            <!-- Tanggal & Jam -->
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-medium text-slate-700 mb-1">Hari / Tanggal *</label>
+                <input type="date" x-model="form.date" required class="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                <p class="text-[10px] text-slate-500 mt-1" x-text="formatIndonesianDate(form.date)"></p>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-700 mb-1">Jam (cth: 06.30)</label>
+                <input type="text" x-model="form.time" placeholder="06.30 / 07.00 - 08.20" class="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                <div class="flex gap-1 mt-1">
+                  <button type="button" @click="form.time = '06.30'" class="text-[10px] bg-slate-100 hover:bg-slate-200 px-1.5 py-0.5 rounded">06.30</button>
+                  <button type="button" @click="form.time = '07.00'" class="text-[10px] bg-slate-100 hover:bg-slate-200 px-1.5 py-0.5 rounded">07.00</button>
+                  <button type="button" @click="form.time = '15.00'" class="text-[10px] bg-slate-100 hover:bg-slate-200 px-1.5 py-0.5 rounded">15.00</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Uraian Tugas / Pekerjaan -->
+            <div>
+              <label class="block text-xs font-medium text-slate-700 mb-1">Uraian Tugas / Pekerjaan *</label>
+              <textarea x-model="form.task" rows="2" required placeholder="Contoh: Mengajar di kelas 8.1 / Presensi Kehadiran" class="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-amber-500 focus:outline-none"></textarea>
+            </div>
+
+            <!-- Output / Hasil & Volume -->
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-medium text-slate-700 mb-1">Output / Hasil</label>
+                <input type="text" x-model="form.output" placeholder="Terlaksana" class="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-amber-500 focus:outline-none">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-700 mb-1">Volume</label>
+                <input type="text" x-model="form.volume" placeholder="1 kegiatan" class="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-amber-500 focus:outline-none">
+              </div>
+            </div>
+
+            <!-- Keterangan -->
+            <div>
+              <label class="block text-xs font-medium text-slate-700 mb-1">Keterangan (Opsional)</label>
+              <input type="text" x-model="form.ket" placeholder="Opsional..." class="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-amber-500 focus:outline-none">
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs md:text-sm font-semibold py-2.5 rounded-lg shadow transition flex items-center justify-center space-x-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+              </svg>
+              <span x-text="form.id ? 'Simpan Perubahan Kegiatan' : '+ Tambahkan ke Laporan'"></span>
+            </button>
+          </form>
+        </div>
+
+        <!-- Activity List & Management (Left Panel Table) -->
+        <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200 space-y-3">
+          <div class="flex items-center justify-between border-b pb-2">
+            <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider">
+              📋 Daftar Kegiatan (<span x-text="periodActivities.length"></span>)
+            </h3>
+            <span class="text-[10px] text-slate-500" x-text="months[selectedMonth] + ' ' + selectedYear"></span>
+          </div>
+
+          <div class="max-h-80 overflow-y-auto divide-y text-xs">
+            <template x-for="item in periodActivities" :key="item.id">
+              <div class="py-2.5 flex items-start justify-between gap-2 hover:bg-slate-50 px-1 rounded transition">
+                <div class="space-y-0.5">
+                  <div class="font-bold text-slate-900" x-text="formatIndonesianDate(item.date)"></div>
+                  <div class="text-slate-800">
+                    <span class="font-semibold text-amber-700" x-text="item.time ? '[' + item.time + ']' : ''"></span>
+                    <span x-text="item.task"></span>
+                  </div>
+                  <div class="text-[10px] text-slate-500">
+                    Output: <span class="font-medium text-emerald-600" x-text="item.output || 'Terlaksana'"></span> |
+                    Vol: <span x-text="item.volume || '1 kegiatan'"></span>
+                  </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex items-center space-x-1 shrink-0">
+                  <button @click="editActivity(item)" title="Edit Baris" class="p-1.5 text-slate-600 hover:text-amber-600 bg-slate-100 hover:bg-amber-50 rounded">
+                    ✏️
+                  </button>
+                  <button @click="deleteActivity(item.id)" title="Hapus Baris" class="p-1.5 text-slate-600 hover:text-red-600 bg-slate-100 hover:bg-red-50 rounded">
+                    🗑️
+                  </button>
+                </div>
+              </div>
+            </template>
+
+            <template x-if="periodActivities.length === 0">
+              <div class="text-center py-8 text-slate-400 text-xs">
+                Belum ada kegiatan pada bulan <span x-text="months[selectedMonth] + ' ' + selectedYear"></span>.
+              </div>
+            </template>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- TAB 2: KELOLA TOMBOL CEPAT (CUSTOM PRESETS) -->
+      <div x-show="activeTab === 'preset'" class="bg-white rounded-xl p-4 md:p-5 shadow-sm border border-slate-200 space-y-4">
+        <div class="border-b pb-2.5 flex items-center justify-between">
+          <div>
+            <h2 class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center space-x-2">
+              <span>⚡</span>
+              <span>Kelola Tombol Cepat (Custom Presets)</span>
+            </h2>
+            <p class="text-[11px] text-slate-500 mt-0.5">Atur tombol pintas tugas mengajar/rutin sesuai kebutuhan Anda.</p>
+          </div>
+          <template x-if="presetForm.index !== null">
+            <button @click="resetPresetForm()" class="text-xs text-red-600 hover:underline font-semibold">Batal Edit</button>
+          </template>
+        </div>
+
+        <!-- Form Tambah/Edit Preset -->
+        <form @submit.prevent="savePreset()" class="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-3">
+          <h3 class="text-xs font-bold text-amber-700" x-text="presetForm.index !== null ? 'Edit Tombol Cepat' : 'Tambah Tombol Cepat Baru'"></h3>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-700 mb-1">Nama / Label Tombol *</label>
+            <input type="text" x-model="presetForm.label" required placeholder="Contoh: Mengajar Kelas 8.1 / Presensi" class="w-full text-xs p-2.5 rounded-lg border border-slate-300 bg-white">
+          </div>
+
+          <div class="grid grid-cols-2 gap-2.5">
+            <div>
+              <label class="block text-xs font-medium text-slate-700 mb-1">Jam Default</label>
+              <input type="text" x-model="presetForm.time" placeholder="07.00 - 08.20" class="w-full text-xs p-2.5 rounded-lg border border-slate-300 bg-white">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-700 mb-1">Volume Default</label>
+              <input type="text" x-model="presetForm.volume" placeholder="1 kegiatan" class="w-full text-xs p-2.5 rounded-lg border border-slate-300 bg-white">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-700 mb-1">Uraian Tugas Default *</label>
+            <input type="text" x-model="presetForm.task" required placeholder="Contoh: Mengajar Informatika di kelas 8.1" class="w-full text-xs p-2.5 rounded-lg border border-slate-300 bg-white">
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-700 mb-1">Output / Hasil Default</label>
+            <input type="text" x-model="presetForm.output" placeholder="Terlaksana" class="w-full text-xs p-2.5 rounded-lg border border-slate-300 bg-white">
+          </div>
+
+          <button type="submit" class="w-full bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold py-2 rounded-lg transition shadow">
+            <span x-text="presetForm.index !== null ? 'Simpan Perubahan Preset' : '+ Tambahkan ke Daftar Tombol Cepat'"></span>
+          </button>
+        </form>
+
+        <!-- List Presets -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between text-xs font-bold text-slate-700">
+            <span>Daftar Tombol Cepat (<span x-text="presets.length"></span>)</span>
+            <button @click="loadDefaultPresets()" class="text-[11px] text-slate-500 hover:text-amber-600 underline">Muat Contoh Preset Standard</button>
+          </div>
+
+          <div class="divide-y max-h-60 overflow-y-auto">
+            <template x-for="(p, idx) in presets" :key="idx">
+              <div class="py-2 flex items-center justify-between hover:bg-slate-50 px-1 rounded">
+                <div class="space-y-0.5">
+                  <div class="text-xs font-bold text-slate-900" x-text="p.label"></div>
+                  <div class="text-[11px] text-slate-600">
+                    <span class="text-amber-700 font-semibold" x-text="p.time ? '[' + p.time + ']' : ''"></span>
+                    <span x-text="p.task"></span>
+                  </div>
+                </div>
+                <div class="flex items-center space-x-1 shrink-0">
+                  <button @click="editPreset(idx)" title="Edit Preset" class="p-1 text-slate-600 hover:text-amber-600">✏️</button>
+                  <button @click="deletePreset(idx)" title="Hapus Preset" class="p-1 text-slate-600 hover:text-red-600">🗑️</button>
+                </div>
+              </div>
+            </template>
+
+            <template x-if="presets.length === 0">
+              <div class="text-center py-6 text-xs text-slate-400">
+                Belum ada tombol cepat. Tambahkan melalui form di atas.
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: DATA PROFIL PEGAWAI & PIMPINAN -->
+      <div x-show="activeTab === 'profil'" class="bg-white rounded-xl p-4 md:p-5 shadow-sm border border-slate-200 space-y-4">
+        <div class="border-b pb-2.5">
+          <h2 class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center space-x-2">
+            <span>👤</span>
+            <span>Data Pegawai & Pimpinan</span>
+          </h2>
+          <p class="text-[11px] text-slate-500 mt-0.5">Data ini otomatis digunakan pada setiap dokumen LKB dan tersimpan di browser.</p>
+        </div>
+
+        <form @submit.prevent="saveProfile()" class="space-y-3.5">
+          
+          <div class="space-y-3">
+            <h3 class="text-xs font-bold text-amber-600 border-b border-slate-100 pb-1">Identitas Pegawai</h3>
+            
+            <div>
+              <label class="block text-xs font-medium text-slate-700 mb-1">Nama Pegawai & Gelar</label>
+              <input type="text" x-model="pegawai.nama" placeholder="Contoh: Ahmad Yunus, S.Kom" class="w-full text-xs p-2.5 rounded-lg border border-slate-300">
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-medium text-slate-700 mb-1">NIP</label>
+                <input type="text" x-model="pegawai.nip" placeholder="199108312025051003" class="w-full text-xs p-2.5 rounded-lg border border-slate-300">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-700 mb-1">Pangkat / Golongan</label>
+                <input type="text" x-model="pegawai.pangkat" placeholder="III / a" class="w-full text-xs p-2.5 rounded-lg border border-slate-300">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-medium text-slate-700 mb-1">Jabatan</label>
+                <input type="text" x-model="pegawai.jabatan" placeholder="Guru Informatika" class="w-full text-xs p-2.5 rounded-lg border border-slate-300">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-700 mb-1">Unit Kerja</label>
+                <input type="text" x-model="pegawai.unitKerja" placeholder="MTsN 19 Jakarta Selatan" class="w-full text-xs p-2.5 rounded-lg border border-slate-300">
+              </div>
+            </div>
+          </div>
+
+          <div class="space-y-3 pt-2">
+            <h3 class="text-xs font-bold text-amber-600 border-b border-slate-100 pb-1">Identitas Atasan / Pimpinan</h3>
+
+            <div>
+              <label class="block text-xs font-medium text-slate-700 mb-1">Nama Pimpinan & Gelar</label>
+              <input type="text" x-model="pegawai.namaPimpinan" placeholder="Contoh: H. Cholis, S.Ag, M.Pd" class="w-full text-xs p-2.5 rounded-lg border border-slate-300">
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-medium text-slate-700 mb-1">Jabatan Pimpinan</label>
+                <input type="text" x-model="pegawai.jabatanPimpinan" placeholder="Kepala MTsN 19 Jakarta" class="w-full text-xs p-2.5 rounded-lg border border-slate-300">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-700 mb-1">NIP Pimpinan</label>
+                <input type="text" x-model="pegawai.nipPimpinan" placeholder="197205121998031002" class="w-full text-xs p-2.5 rounded-lg border border-slate-300">
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-slate-700 mb-1">Kota Tempat Laporan</label>
+              <input type="text" x-model="pegawai.kota" placeholder="Jakarta" class="w-full text-xs p-2.5 rounded-lg border border-slate-300">
+            </div>
+          </div>
+
+          <!-- Save Profile Button -->
+          <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs md:text-sm font-semibold py-2.5 rounded-lg shadow transition flex items-center justify-center space-x-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <span>Simpan Data Profil</span>
+          </button>
+        </form>
+      </div>
+
+    </div>
+
+    <!-- RIGHT PANEL: REALTIME A4 DOCUMENT PREVIEW (~60% Width) -->
+    <div class="lg:col-span-7 flex flex-col items-center">
+      
+      <!-- Preview Header Indicator (No-Print) -->
+      <div class="no-print w-full max-w-[210mm] mb-3 flex items-center justify-between bg-white px-4 py-2.5 rounded-xl border border-slate-200 shadow-sm text-xs">
+        <div class="flex items-center space-x-2 text-slate-700">
+          <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span class="font-bold">Preview Dokumen LKB (A4)</span>
+        </div>
+        <div class="text-[11px] text-slate-500">
+          Margin: Left 3cm, Top/Right/Bottom 2cm
+        </div>
+      </div>
+
+      <!-- A4 PAPER DOCUMENT SIMULATION -->
+      <div id="paper-document" class="paper-sheet leading-normal">
+        
+        <!-- HEADER DOKUMEN -->
+        <div class="text-center font-bold text-sm tracking-wide space-y-0.5 uppercase mb-6 font-sans">
+          <div>LAPORAN KINERJA BULANAN</div>
+          <div>BULAN <span x-text="months[selectedMonth].toUpperCase()"></span> <span x-text="selectedYear"></span></div>
+        </div>
+
+        <!-- IDENTITAS PEGAWAI BLOCK -->
+        <div class="font-bold text-[11px] space-y-1 mb-5 font-sans max-w-xl">
+          <div class="grid grid-cols-[130px_12px_1fr] items-center">
+            <span>NAMA</span>
+            <span>:</span>
+            <span x-text="pegawai.nama || '..........................................................'"></span>
+          </div>
+          <div class="grid grid-cols-[130px_12px_1fr] items-center">
+            <span>NIP</span>
+            <span>:</span>
+            <span x-text="pegawai.nip || '..........................................................'"></span>
+          </div>
+          <div class="grid grid-cols-[130px_12px_1fr] items-center">
+            <span>PANGKAT/GOL</span>
+            <span>:</span>
+            <span x-text="pegawai.pangkat || '..........................................................'"></span>
+          </div>
+          <div class="grid grid-cols-[130px_12px_1fr] items-center">
+            <span>JABATAN</span>
+            <span>:</span>
+            <span x-text="pegawai.jabatan || '..........................................................'"></span>
+          </div>
+          <div class="grid grid-cols-[130px_12px_1fr] items-center">
+            <span>UNIT KERJA</span>
+            <span>:</span>
+            <span x-text="pegawai.unitKerja || '..........................................................'"></span>
+          </div>
+        </div>
+
+        <!-- MAIN EXCEL TABLE -->
+        <table class="excel-table text-[11px] leading-tight mb-8">
+          <thead>
+            <tr class="excel-header-bg text-black font-bold text-center uppercase">
+              <th class="py-2 px-1 w-[35px]">NO</th>
+              <th class="py-2 px-1 w-[125px]">HARI/TANGGAL</th>
+              <th class="py-2 px-1 w-[55px]">JAM</th>
+              <th class="py-2 px-2">URAIAN TUGAS/PEKERJAAN</th>
+              <th class="py-2 px-1 w-[110px]">OUTPUT/HASIL</th>
+              <th class="py-2 px-1 w-[70px]">VOLUME</th>
+              <th class="py-2 px-1 w-[50px]">KET</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="(group, gIdx) in groupedPeriodActivities" :key="group.date">
+              <template x-for="(item, iIdx) in group.items" :key="item.id">
+                <tr class="hover:bg-slate-50 transition-colors">
+                  
+                  <!-- Column NO (Rowspan on first item of group) -->
+                  <template x-if="iIdx === 0">
+                    <td :rowspan="group.items.length" class="text-center font-normal align-middle bg-white px-1 py-1.5">
+                      <span x-text="gIdx + 1"></span>
+                    </td>
+                  </template>
+
+                  <!-- Column HARI/TANGGAL (Rowspan on first item of group) -->
+                  <template x-if="iIdx === 0">
+                    <td :rowspan="group.items.length" class="text-center align-middle bg-white px-1 py-1.5 whitespace-nowrap font-normal">
+                      <div x-text="group.formattedDate.split(', ')[0] + ','"></div>
+                      <div x-text="group.formattedDate.split(', ')[1]"></div>
+                    </td>
+                  </template>
+
+                  <!-- Column JAM -->
+                  <td class="text-center align-middle px-1 py-1.5 whitespace-nowrap font-normal" x-text="item.time"></td>
+
+                  <!-- Column URAIAN TUGAS/PEKERJAAN -->
+                  <td class="text-left align-middle px-2 py-1.5 font-normal text-[11px]" x-text="item.task"></td>
+
+                  <!-- Column OUTPUT/HASIL -->
+                  <td class="text-center align-middle px-1 py-1.5 font-normal whitespace-nowrap" x-text="item.output || 'Terlaksana'"></td>
+
+                  <!-- Column VOLUME -->
+                  <td class="text-center align-middle px-1 py-1.5 font-normal" x-text="item.volume || '1 kegiatan'"></td>
+
+                  <!-- Column KET -->
+                  <td class="text-center align-middle px-1 py-1.5 font-normal" x-text="item.ket"></td>
+
+                </tr>
+              </template>
+            </template>
+
+            <!-- Placeholder Empty State -->
+            <template x-if="groupedPeriodActivities.length === 0">
+              <tr>
+                <td colspan="7" class="text-center py-10 text-slate-400 italic font-sans">
+                  Belum ada data kegiatan pada bulan <span x-text="months[selectedMonth] + ' ' + selectedYear"></span>.
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+
+        <!-- FOOTER TANDA TANGAN -->
+        <div class="text-xs font-sans flex justify-between items-start break-inside-avoid">
+          
+          <!-- Left Column: Pimpinan -->
+          <div class="text-center w-64 space-y-1">
+            <p class="font-normal">Mengetahui,</p>
+            <p class="font-normal" x-text="pegawai.jabatanPimpinan || '(Jabatan Pimpinan)'"></p>
+            <div class="h-20"></div>
+            <p class="font-bold underline" x-text="pegawai.namaPimpinan || '(Nama Pimpinan)'"></p>
+            <p class="text-[11px]">NIP. <span x-text="pegawai.nipPimpinan || '....................................'"></span></p>
+          </div>
+
+          <!-- Right Column: Pegawai -->
+          <div class="text-center w-64 space-y-1">
+            <p class="font-normal" x-text="lastWorkingDateFormatted"></p>
+            <p class="font-normal">Yang bersangkutan,</p>
+            <div class="h-20"></div>
+            <p class="font-bold underline" x-text="pegawai.nama || '(Nama Pegawai)'"></p>
+            <p class="text-[11px]">NIP. <span x-text="pegawai.nip || '....................................'"></span></p>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- TOAST NOTIFICATION (No-Print) -->
+  <div x-show="toast.show" x-transition class="no-print fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-2 text-xs">
+    <span x-text="toast.type === 'error' ? '❌' : '✅'"></span>
+    <span x-text="toast.message" class="font-medium"></span>
+  </div>
+
+  <!-- APP STATE LOGIC (AlpineJS) -->
+  <script>
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('lkbApp', () => ({
+        activeTab: 'input',
+        
+        // Month Index (Current month default)
+        selectedMonth: new Date().getMonth(), 
+        selectedYear: new Date().getFullYear(),
+
+        months: [
+          'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+          'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+        ],
+
+        // Clean Blank Profile Data
+        pegawai: {
+          nama: '',
+          nip: '',
+          pangkat: '',
+          jabatan: '',
+          unitKerja: '',
+          namaPimpinan: '',
+          jabatanPimpinan: '',
+          nipPimpinan: '',
+          kota: ''
+        },
+
+        // Form Activity Input State
+        form: {
+          id: null,
+          date: '',
+          time: '06.30',
+          task: '',
+          output: 'Terlaksana',
+          volume: '1 kegiatan',
+          ket: ''
+        },
+
+        // Custom Preset Form State
+        presetForm: {
+          index: null,
+          label: '',
+          time: '',
+          task: '',
+          output: 'Terlaksana',
+          volume: '1 kegiatan'
+        },
+
+        // Dynamic Custom Presets List
+        presets: [],
+
+        // Clean Activities List (Empty Start)
+        activities: [],
+
+        toast: { show: false, message: '', type: 'success' },
+
+        init() {
+          // Load Saved Profile
+          const savedPegawai = localStorage.getItem('lkb_pegawai_profile');
+          if (savedPegawai) {
+            try { this.pegawai = JSON.parse(savedPegawai); } catch(e) {}
+          }
+
+          // Load Saved Activities
+          const savedActivities = localStorage.getItem('lkb_activities_list');
+          if (savedActivities) {
+            try { this.activities = JSON.parse(savedActivities); } catch(e) {}
+          }
+
+          // Load Saved Custom Presets
+          const savedPresets = localStorage.getItem('lkb_custom_presets');
+          if (savedPresets) {
+            try { this.presets = JSON.parse(savedPresets); } catch(e) {}
+          } else {
+            this.loadDefaultPresets();
+          }
+
+          // Auto-save changes to localStorage
+          this.$watch('pegawai', val => localStorage.setItem('lkb_pegawai_profile', JSON.stringify(val)), { deep: true });
+          this.$watch('activities', val => localStorage.setItem('lkb_activities_list', JSON.stringify(val)), { deep: true });
+          this.$watch('presets', val => localStorage.setItem('lkb_custom_presets', JSON.stringify(val)), { deep: true });
+
+          this.updateFormDateDefault();
+        },
+
+        showToast(msg, type = 'success') {
+          this.toast.message = msg;
+          this.toast.type = type;
+          this.toast.show = true;
+          setTimeout(() => { this.toast.show = false; }, 3000);
+        },
+
+        onPeriodChange() {
+          this.updateFormDateDefault();
+        },
+
+        updateFormDateDefault() {
+          const m = String(Number(this.selectedMonth) + 1).padStart(2, '0');
+          this.form.date = `${this.selectedYear}-${m}-01`;
+        },
+
+        // Apply Preset to Manual Form
+        applyPreset(preset) {
+          if (preset.time) this.form.time = preset.time;
+          if (preset.task) this.form.task = preset.task;
+          if (preset.output) this.form.output = preset.output;
+          if (preset.volume) this.form.volume = preset.volume;
+
+          this.showToast(`Preset "${preset.label}" diterapkan ke form!`);
+        },
+
+        // Custom Presets Management Methods
+        savePreset() {
+          if (!this.presetForm.label.trim() || !this.presetForm.task.trim()) {
+            this.showToast('Nama tombol dan Uraian tugas wajib diisi!', 'error');
+            return;
+          }
+
+          const newPreset = {
+            label: this.presetForm.label,
+            time: this.presetForm.time,
+            task: this.presetForm.task,
+            output: this.presetForm.output || 'Terlaksana',
+            volume: this.presetForm.volume || '1 kegiatan'
+          };
+
+          if (this.presetForm.index !== null) {
+            this.presets[this.presetForm.index] = newPreset;
+            this.showToast('Preset berhasil diperbarui!');
+          } else {
+            this.presets.push(newPreset);
+            this.showToast('Preset baru ditambahkan!');
+          }
+
+          this.resetPresetForm();
+        },
+
+        editPreset(idx) {
+          const p = this.presets[idx];
+          this.presetForm = {
+            index: idx,
+            label: p.label,
+            time: p.time || '',
+            task: p.task || '',
+            output: p.output || 'Terlaksana',
+            volume: p.volume || '1 kegiatan'
+          };
+        },
+
+        deletePreset(idx) {
+          this.presets.splice(idx, 1);
+          this.showToast('Preset dihapus.');
+        },
+
+        resetPresetForm() {
+          this.presetForm = {
+            index: null,
+            label: '',
+            time: '',
+            task: '',
+            output: 'Terlaksana',
+            volume: '1 kegiatan'
+          };
+        },
+
+        loadDefaultPresets() {
+          this.presets = [
+            { label: 'Presensi Kehadiran', time: '06.30', task: 'Presensi Kehadiran', output: 'Terlaksana', volume: '1 kegiatan' },
+            { label: 'Presensi Pulang', time: '15.00', task: 'Presensi Pulang', output: 'Terlaksana', volume: '1 kegiatan' },
+            { label: 'Mengajar Kelas 7.1', time: '07.00 - 08.20', task: 'Mengajar di kelas 7.1', output: 'Terlaksana', volume: '1 kegiatan' },
+            { label: 'Mengajar Kelas 8.1', time: '08.30 - 09.50', task: 'Mengajar di kelas 8.1', output: 'Terlaksana', volume: '1 kegiatan' },
+            { label: 'Murojaah Kelas', time: '06.30 - 07.00', task: 'Murojaah Bersama Kelas Siswa', output: 'Terlaksana', volume: '1 kegiatan' },
+            { label: 'Mengawas ASAT', time: '07.30 - 09.30', task: 'Mengawas ASAT', output: 'Terlaksana', volume: '1 kegiatan' },
+            { label: 'Piket ASAT', time: '10.00 - 12.00', task: 'Piket ASAT', output: 'Terlaksana', volume: '1 kegiatan' }
+          ];
+        },
+
+        saveActivity() {
+          if (!this.form.date) {
+            this.showToast('Harap tentukan tanggal kegiatan!', 'error');
+            return;
+          }
+          if (!this.form.task.trim()) {
+            this.showToast('Uraian tugas tidak boleh kosong!', 'error');
+            return;
+          }
+
+          const d = new Date(this.form.date + 'T00:00:00');
+          if (!isNaN(d.getTime())) {
+            this.selectedMonth = d.getMonth();
+            this.selectedYear = d.getFullYear();
+          }
+
+          if (this.form.id) {
+            const idx = this.activities.findIndex(a => a.id === this.form.id);
+            if (idx !== -1) {
+              this.activities[idx] = { ...this.form };
+              this.showToast('Kegiatan berhasil diperbarui!');
+            }
+          } else {
+            this.activities.push({
+              ...this.form,
+              id: Date.now() + Math.random()
+            });
+            this.showToast('Kegiatan berhasil ditambahkan!');
+          }
+
+          this.resetForm();
+        },
+
+        editActivity(item) {
+          this.form = { ...item };
+          this.activeTab = 'input';
+        },
+
+        deleteActivity(id) {
+          this.activities = this.activities.filter(a => a.id !== id);
+          this.showToast('Kegiatan dihapus.');
+        },
+
+        resetForm() {
+          const currentDate = this.form.date;
+          this.form = {
+            id: null,
+            date: currentDate,
+            time: '',
+            task: '',
+            output: 'Terlaksana',
+            volume: '1 kegiatan',
+            ket: ''
+          };
+        },
+
+        saveProfile() {
+          localStorage.setItem('lkb_pegawai_profile', JSON.stringify(this.pegawai));
+          this.showToast('Data Profil & Pimpinan berhasil disimpan!');
+        },
+
+        clearAllData() {
+          this.activities = [];
+          this.pegawai = {
+            nama: '',
+            nip: '',
+            pangkat: '',
+            jabatan: '',
+            unitKerja: '',
+            namaPimpinan: '',
+            jabatanPimpinan: '',
+            nipPimpinan: '',
+            kota: ''
+          };
+          localStorage.removeItem('lkb_activities_list');
+          localStorage.removeItem('lkb_pegawai_profile');
+          this.showToast('Semua data berhasil dikosongkan!');
+        },
+
+        formatIndonesianDate(dateStr) {
+          if (!dateStr) return '';
+          const d = new Date(dateStr + 'T00:00:00');
+          if (isNaN(d.getTime())) return dateStr;
+
+          const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+          const months = [
+            'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+            'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+          ];
+
+          return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+        },
+
+        get periodActivities() {
+          return this.activities.filter(item => {
+            if (!item.date) return false;
+            const d = new Date(item.date + 'T00:00:00');
+            return d.getMonth() === Number(this.selectedMonth) && d.getFullYear() === Number(this.selectedYear);
+          }).sort((a, b) => {
+            if (a.date !== b.date) return a.date.localeCompare(b.date);
+            return (a.time || '').localeCompare(b.time || '');
+          });
+        },
+
+        get groupedPeriodActivities() {
+          const sorted = this.periodActivities;
+          const groups = [];
+          let currentGroup = null;
+
+          sorted.forEach(item => {
+            if (!currentGroup || currentGroup.date !== item.date) {
+              currentGroup = {
+                date: item.date,
+                formattedDate: this.formatIndonesianDate(item.date),
+                items: []
+              };
+              groups.push(currentGroup);
+            }
+            currentGroup.items.push(item);
+          });
+
+          return groups;
+        },
+
+        get lastWorkingDateFormatted() {
+          const mIndex = Number(this.selectedMonth);
+          const y = Number(this.selectedYear);
+
+          let d = new Date(y, mIndex + 1, 0);
+          let dayOfWeek = d.getDay();
+
+          if (dayOfWeek === 6) {
+            d.setDate(d.getDate() - 1);
+          } else if (dayOfWeek === 0) {
+            d.setDate(d.getDate() - 2);
+          }
+
+          const dateNum = d.getDate();
+          const monthName = this.months[mIndex];
+          const city = this.pegawai.kota || 'Jakarta';
+
+          return `${city}, ${dateNum} ${monthName} ${y}`;
+        },
+
+        printDocument() {
+          window.print();
+        },
+
+        exportToExcel() {
+          const dataRows = [];
+          
+          dataRows.push(["LAPORAN KINERJA BULANAN"]);
+          dataRows.push([`BULAN ${this.months[this.selectedMonth].toUpperCase()} ${this.selectedYear}`]);
+          dataRows.push([]);
+
+          dataRows.push(["NAMA", ": " + (this.pegawai.nama || "")]);
+          dataRows.push(["NIP", ": " + (this.pegawai.nip || "")]);
+          dataRows.push(["PANGKAT/GOL", ": " + (this.pegawai.pangkat || "")]);
+          dataRows.push(["JABATAN", ": " + (this.pegawai.jabatan || "")]);
+          dataRows.push(["UNIT KERJA", ": " + (this.pegawai.unitKerja || "")]);
+          dataRows.push([]);
+
+          dataRows.push(["NO", "HARI/TANGGAL", "JAM", "URAIAN TUGAS/PEKERJAAN", "OUTPUT/HASIL", "VOLUME", "KET"]);
+
+          let rowNo = 1;
+          this.groupedPeriodActivities.forEach(group => {
+            group.items.forEach((item, itemIdx) => {
+              dataRows.push([
+                itemIdx === 0 ? rowNo : "",
+                itemIdx === 0 ? group.formattedDate : "",
+                item.time || "",
+                item.task || "",
+                item.output || "Terlaksana",
+                item.volume || "1 kegiatan",
+                item.ket || ""
+              ]);
+            });
+            rowNo++;
+          });
+
+          dataRows.push([]);
+          dataRows.push([]);
+          dataRows.push(["Mengetahui,", "", "", "", "", "", this.lastWorkingDateFormatted]);
+          dataRows.push([this.pegawai.jabatanPimpinan || "(Jabatan Pimpinan)", "", "", "", "", "", "Yang bersangkutan,"]);
+          dataRows.push([]);
+          dataRows.push([]);
+          dataRows.push([]);
+          dataRows.push([this.pegawai.namaPimpinan || "(Nama Pimpinan)", "", "", "", "", "", this.pegawai.nama || "(Nama Pegawai)"]);
+          dataRows.push([`NIP. ${this.pegawai.nipPimpinan || ""}`, "", "", "", "", "", `NIP. ${this.pegawai.nip || ""}`]);
+
+          const ws = XLSX.utils.aoa_to_sheet(dataRows);
+
+          ws['!cols'] = [
+            { wch: 6 },
+            { wch: 22 },
+            { wch: 10 },
+            { wch: 45 },
+            { wch: 16 },
+            { wch: 12 },
+            { wch: 10 }
+          ];
+
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, "LKB");
+
+          const nameTag = (this.pegawai.nama || 'LKB').replace(/\s+/g, '_');
+          const fileName = `LKB_${nameTag}_${this.months[this.selectedMonth]}_${this.selectedYear}.xlsx`;
+          XLSX.writeFile(wb, fileName);
+
+          this.showToast('File Excel berhasil dibuat & diunduh!');
+        }
+      }));
+    });
+  </script>
+</body>
+</html>
